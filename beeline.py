@@ -229,7 +229,7 @@ class Beeline:
         i=1
         for feature in features:
             points.append(feature.geometry().asPoint())
-            i=i+1
+            i+=1
         print points, i
         k = 1
         for point1 in points:
@@ -259,15 +259,14 @@ class Beeline:
                 pr.addFeatures([outFeat])
             k += 1
 			
-			# Handle output in memory layer or shapefile and add it to TOC
+	    # Handle output in memory layer or shapefile
             if self.dlg.ui.memoryLayerOutput.isChecked():  # Load memory layer in canvas
                 QgsMapLayerRegistry.instance().addMapLayer(outputLayer)
 
 
             elif self.dlg.ui.shapefileOutput.isChecked():  # Save shapefile
 
-                error = QgsVectorFileWriter.writeAsVectorFormat(outputLayer, shapefilename, "utf-8", None,
-                                                                "ESRI Shapefile")
+                error = QgsVectorFileWriter.writeAsVectorFormat(outputLayer, shapefilename, "utf-8", None, "ESRI Shapefile")
                 if self.dlg.ui.addToCanvas.isChecked():  # Load layer
                     layername = os.path.splitext(os.path.basename(str(shapefilename)))[0]
                     savedLayer = QgsVectorLayer(shapefilename, layername, "ogr")
