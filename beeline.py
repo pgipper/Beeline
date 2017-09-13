@@ -23,7 +23,7 @@
 from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
 from PyQt4.QtGui import QAction, QIcon, QFileDialog
 from qgis.gui import QgsMessageBar
-from qgis.core import QgsGeometry, QgsFeatureRequest, QgsSpatialIndex, QgsVectorLayer, QgsFeature, QgsPoint, QgsMapLayerRegistry, QgsVectorFileWriter
+from qgis.core import QgsGeometry, QgsFeatureRequest, QgsSpatialIndex, QgsVectorLayer, QgsFeature, QgsPoint, QgsMapLayerRegistry, QgsVectorFileWriter, QgsProject
 # Initialize Qt resources from file resources.py
 import resources_rc
 # Import the code for the dialog
@@ -168,7 +168,6 @@ class Beeline:
 
     def initGui(self):
         """Create the menu entries and toolbar icons inside the QGIS GUI."""
-
         icon_path = ':/plugins/Beeline/icon.svg'
         self.add_action(
             icon_path,
@@ -193,20 +192,17 @@ class Beeline:
 
     def populate(self):
         """Populate the dropdown menu with point vecor layers"""
-        self.layers = self.iface.legendInterface().layers()
-        layer_list = []
-        for layer in self.layers:
-            if layer.geometryType() == 0: #0 = point, 1 = line etc. TODO: try again with more readable wkbType
-                layer_list.append(layer.name(), layer)
         self.dlg.ui.cmbInputLayer.clear()
-        self.dlg.ui.cmbInputLayer.addItems(layer_list)
+        for legend in QgsProject.instance().layerTreeRoot().findLayers():
+            layer = QgsMapLayerRegistry.instance().mapLayer(legend.layerId())
+            if layer.geometryType() == 0:
+                self.dlg.ui.cmbInputLayer.addItem(layer.name())
             
     def makeLines(self):
-        """Here is where the magic happens. Make Lines from Points using the geographiclib resources"""
+        """Make Lines from Points using the geographiclib resources"""
         # Check for a valid Input Layer
-        inputLayerIndex = self.dlg.ui.cmbInputLayer.currentIndex()
-        inputLayer = self.layers[inputLayerIndex]
-        print "name: ", inputLayer.name()
+        layer_name = self.dlg.ui.cmbInputLayer.currentText()
+        inputLayer = QgsMapLayerRegistry.instance().mapLayersByName(layer_name)[0]
         if inputLayer is None:
             self.showMessage(self.tr('Input point layer is not set. Please specify a layer and try again.'), QgsMessageBar.WARNING)
             return
@@ -282,16 +278,12 @@ class Beeline:
             
     def run(self):
         """Run method that performs all the real work"""
-      
-        # Run the dialog event loop
-        result = self.dlg.exec_()
-        
         # Populate the Dropdown Menu (ComboBox)
         self.populate()
 
-        # show the dialog
-        self.dlg.show()
-            
+        # Run the dialog event loop
+        result = self.dlg.exec_()
+    
         # See if OK was pressed
         if result:
             print("ok i ran")
