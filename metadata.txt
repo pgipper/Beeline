@@ -1,0 +1,17 @@
+[general]
+name=Beeline
+description=Connect points along great circles
+about=Creates a line vector layer that connects all input points along great circles, i.e. the shortest path on a spheroid (beeline).
+category=Vector
+version=0.1.0
+qgisMinimumVersion=2.8
+author=Peter Gipper
+email=peter.gipper@geosysnet.de
+icon=icons/beeline.svg
+tags=great circle, beeline, air line, flight, shortest path, geographiclib, geodesic
+homepage=
+tracker=
+repository=
+experimental=True
+deprecated=False
+version=version 0.1
