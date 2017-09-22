@@ -28,9 +28,10 @@ from qgis.core import QgsGeometry, QgsFeatureRequest, QgsSpatialIndex, QgsVector
 import resources_rc
 # Import the code for the dialog
 from beeline_dialog import BeelineDialog
-import os.path, math, sys
+
+import math
+import sys, os.path; sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/libs")
 #import functions-files, Path for external libs
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/libs")
 from geographiclib.geodesic import Geodesic
 
 # define the WGS84 ellipsoid using geographiclib
@@ -202,9 +203,16 @@ class Beeline:
         """Make Lines from Points using the geographiclib resources"""
         # Check for a valid Input Layer
         layer_name = self.dlg.ui.cmbInputLayer.currentText()
+        layerCount = len(QgsMapLayerRegistry.instance().mapLayers())
+        if layerCount == 0:
+            self.showMessage(self.tr('No layers to process. Please add a point layer to your project.'), QgsMessageBar.WARNING)
+            return
         inputLayer = QgsMapLayerRegistry.instance().mapLayersByName(layer_name)[0]
         if inputLayer is None:
             self.showMessage(self.tr('Input point layer is not set. Please specify a layer and try again.'), QgsMessageBar.WARNING)
+            return
+        elif inputLayer.crs().authid() != u'EPSG:4326':
+            self.showMessage(self.tr('Input point layer must be in geographic coordinates (WGS 84, EPSG 4326).'), QgsMessageBar.WARNING)
             return
         elif (self.dlg.ui.shapefileOutput.isChecked() and self.dlg.ui.outputFilename.text() == ''):
             self.showMessage(self.tr('Error, no valid shapefile name for output'),QgsMessageBar.WARNING)
@@ -226,11 +234,9 @@ class Beeline:
         pr = outputLayer.dataProvider()
         outFeat = QgsFeature()
         points = []
-        i=1
         for feature in features:
             points.append(feature.geometry().asPoint())
-            i+=1
-        print points, i
+			
         k = 1
         for point1 in points:
             for point2 in points[k:]:
@@ -239,7 +245,11 @@ class Beeline:
 
                 # Calculate waypoints for smooth geodesic
                 l = geod.InverseLine(point1[1], point1[0], point2[1], point2[0], Geodesic.LATITUDE | Geodesic.LONGITUDE)
-                da = 1; n = int(math.ceil(l.a13 / da)); da = l.a13 / n
+                da = 1
+                print "l.a13: ",l.a13, " - l.a13/da: ", l.a13 / da, " - math.ceil(): ", math.ceil(l.a13 / da)
+		n = int(math.ceil(l.a13 / da))
+		da = l.a13 / n
+		
                 for i in range(n + 1):
                     a = da * i
                     g = l.ArcPosition(a, Geodesic.LATITUDE | Geodesic.LONGITUDE | Geodesic.LONG_UNROLL)
@@ -265,9 +275,9 @@ class Beeline:
 
 
             elif self.dlg.ui.shapefileOutput.isChecked():  # Save shapefile
+                QgsVectorFileWriter.writeAsVectorFormat(outputLayer, shapefilename, "utf-8", None, "ESRI Shapefile")
 
-                error = QgsVectorFileWriter.writeAsVectorFormat(outputLayer, shapefilename, "utf-8", None, "ESRI Shapefile")
-                if self.dlg.ui.addToCanvas.isChecked():  # Load layer
+                if self.dlg.ui.addToCanvas.isChecked():  # Add saved shapefile to canvas
                     layername = os.path.splitext(os.path.basename(str(shapefilename)))[0]
                     savedLayer = QgsVectorLayer(shapefilename, layername, "ogr")
                     QgsMapLayerRegistry.instance().addMapLayer(savedLayer)
