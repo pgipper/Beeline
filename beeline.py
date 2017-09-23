@@ -6,7 +6,6 @@
  Connect points along great circles
                               -------------------
         begin                : 2017-09-10
-        git sha              : $Format:%H$
         copyright            : (C) 2017 by Peter Gipper
         email                : peter.gipper@geosysnet.de
  ***************************************************************************/
@@ -21,17 +20,15 @@
  ***************************************************************************/
 """
 from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
-from PyQt4.QtGui import QAction, QIcon, QFileDialog
+from PyQt4.QtGui import QAction, QIcon, QFileDialog, QProgressBar
 from qgis.gui import QgsMessageBar
 from qgis.core import QgsGeometry, QgsFeatureRequest, QgsSpatialIndex, QgsVectorLayer, QgsFeature, QgsPoint, QgsMapLayerRegistry, QgsVectorFileWriter, QgsProject
 # Initialize Qt resources from file resources.py
 import resources_rc
 # Import the code for the dialog
 from beeline_dialog import BeelineDialog
-
-import math
-import sys, os.path; sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/libs")
-#import functions-files, Path for external libs
+# Import libs and the external geographiclib
+import time, math, sys, os.path; sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/libs")
 from geographiclib.geodesic import Geodesic
 
 # define the WGS84 ellipsoid using geographiclib
@@ -67,11 +64,10 @@ class Beeline:
             if qVersion() > '4.3.3':
                 QCoreApplication.installTranslator(self.translator)
 
-
         # Declare instance attributes
         self.actions = []
         self.menu = self.tr(u'&Beeline')
-        # TODO: We are going to let the user set this up in a future iteration
+        # Add a toolbar
         self.toolbar = self.iface.addToolBar(u'Beeline')
         self.toolbar.setObjectName(u'Beeline')
 
@@ -192,98 +188,12 @@ class Beeline:
         self.iface.messageBar().pushMessage(message, level, self.iface.messageTimeout())
 
     def populate(self):
-        """Populate the dropdown menu with point vecor layers"""
+        """Populate the dropdown menu with point vector layers"""
         self.dlg.ui.cmbInputLayer.clear()
         for legend in QgsProject.instance().layerTreeRoot().findLayers():
             layer = QgsMapLayerRegistry.instance().mapLayer(legend.layerId())
             if layer.geometryType() == 0:
                 self.dlg.ui.cmbInputLayer.addItem(layer.name())
-            
-    def makeLines(self):
-        """Make Lines from Points using the geographiclib resources"""
-        # Check for a valid Input Layer
-        layer_name = self.dlg.ui.cmbInputLayer.currentText()
-        layerCount = len(QgsMapLayerRegistry.instance().mapLayers())
-        if layerCount == 0:
-            self.showMessage(self.tr('No layers to process. Please add a point layer to your project.'), QgsMessageBar.WARNING)
-            return
-        inputLayer = QgsMapLayerRegistry.instance().mapLayersByName(layer_name)[0]
-        if inputLayer is None:
-            self.showMessage(self.tr('Input point layer is not set. Please specify a layer and try again.'), QgsMessageBar.WARNING)
-            return
-        elif inputLayer.crs().authid() != u'EPSG:4326':
-            self.showMessage(self.tr('Input point layer must be in geographic coordinates (WGS 84, EPSG 4326).'), QgsMessageBar.WARNING)
-            return
-        elif (self.dlg.ui.shapefileOutput.isChecked() and self.dlg.ui.outputFilename.text() == ''):
-            self.showMessage(self.tr('Error, no valid shapefile name for output'),QgsMessageBar.WARNING)
-            return
-
-        # Restrict processing to selected features
-        if inputLayer.selectedFeatures():
-            features = inputLayer.selectedFeatures()
-        else:
-            features = inputLayer.getFeatures()
-
-        # Set output filename
-        if self.dlg.ui.shapefileOutput.isChecked():
-            shapefilename = self.dlg.ui.outputFilename.text()
-
-        # Create a new lineString Layer for output
-        crsString = inputLayer.crs().authid()
-        outputLayer = QgsVectorLayer("LineString?crs=" + crsString, "Beeline_"+inputLayer.name(), "memory")
-        pr = outputLayer.dataProvider()
-        outFeat = QgsFeature()
-        points = []
-        for feature in features:
-            points.append(feature.geometry().asPoint())
-			
-        k = 1
-        for point1 in points:
-            for point2 in points[k:]:
-                arcpoints = []
-                arcpoints2 = []
-
-                # Calculate waypoints for smooth geodesic
-                l = geod.InverseLine(point1[1], point1[0], point2[1], point2[0], Geodesic.LATITUDE | Geodesic.LONGITUDE)
-                da = 1
-                print "l.a13: ",l.a13, " - l.a13/da: ", l.a13 / da, " - math.ceil(): ", math.ceil(l.a13 / da)
-		n = int(math.ceil(l.a13 / da))
-		da = l.a13 / n
-		
-                for i in range(n + 1):
-                    a = da * i
-                    g = l.ArcPosition(a, Geodesic.LATITUDE | Geodesic.LONGITUDE | Geodesic.LONG_UNROLL)
-
-                    # Make multipart feature if the line crosses longitude of 180 degree
-                    if g['lon2'] >= -180:
-                        arcpoints.append(QgsPoint(g['lon2'], g['lat2']))
-                    else:
-                        arcpoints2.append(QgsPoint(g['lon2']+360, g['lat2']))
-
-                if not arcpoints2:
-                    polyline = QgsGeometry.fromPolyline(arcpoints)
-                else:
-                    polyline = QgsGeometry.fromMultiPolyline([arcpoints, arcpoints2])
-
-                outFeat.setGeometry(polyline)
-                pr.addFeatures([outFeat])
-            k += 1
-			
-	    # Handle output in memory layer or shapefile
-            if self.dlg.ui.memoryLayerOutput.isChecked():  # Load memory layer in canvas
-                QgsMapLayerRegistry.instance().addMapLayer(outputLayer)
-
-
-            elif self.dlg.ui.shapefileOutput.isChecked():  # Save shapefile
-                QgsVectorFileWriter.writeAsVectorFormat(outputLayer, shapefilename, "utf-8", None, "ESRI Shapefile")
-
-                if self.dlg.ui.addToCanvas.isChecked():  # Add saved shapefile to canvas
-                    layername = os.path.splitext(os.path.basename(str(shapefilename)))[0]
-                    savedLayer = QgsVectorLayer(shapefilename, layername, "ogr")
-                    QgsMapLayerRegistry.instance().addMapLayer(savedLayer)
-
-        self.dlg.close()
-        self.showMessage(self.tr('Completed.'), QgsMessageBar.SUCCESS)
             
     def run(self):
         """Run method that performs all the real work"""
@@ -295,5 +205,115 @@ class Beeline:
     
         # See if OK was pressed
         if result:
-            print("ok i ran")
-            self.makeLines()
+            
+            # Check for a valid Input Layers in the project
+            point_layers = []
+            layers = QgsMapLayerRegistry.instance().mapLayers()
+            for name, layer in layers.iteritems():
+                # Check the layer geometry type (0 for points, 1 for lines, and 2 for polygons)
+                if layer.geometryType() == 0:
+                    point_layers.append(layer)
+            if len(point_layers) == 0:
+                self.showMessage(self.tr('No layers to process. Please add a point layer to your project.'), QgsMessageBar.WARNING)
+                return
+            
+            # Get input layer by name (index may change)
+            layer_name = self.dlg.ui.cmbInputLayer.currentText()
+            inputLayer = QgsMapLayerRegistry.instance().mapLayersByName(layer_name)[0]
+
+            # Check if CRS is WGS84 (EPSG:4326)
+            if inputLayer.crs().authid() != u'EPSG:4326':
+                self.showMessage(self.tr('Input point layer must be in geographic coordinates (WGS 84, EPSG 4326).'), QgsMessageBar.WARNING)
+                return
+
+            # Check if output location is set
+            elif (self.dlg.ui.shapefileOutput.isChecked() and self.dlg.ui.outputFilename.text() == ''):
+                self.showMessage(self.tr('Error, no valid shapefile name for output'),QgsMessageBar.WARNING)
+                return
+
+            # Get output filename
+            if self.dlg.ui.shapefileOutput.isChecked():
+                shapefilename = self.dlg.ui.outputFilename.text()
+
+            # Restrict processing to selected features
+            if inputLayer.selectedFeatures():
+                features = inputLayer.selectedFeatures()
+            else:
+                features = inputLayer.getFeatures()
+
+            # Create a new memory layer for output
+            crsString = inputLayer.crs().authid()
+            outputLayer = QgsVectorLayer("LineString?crs=" + crsString, "Beelines_"+inputLayer.name(), "memory")
+            pr = outputLayer.dataProvider()
+            outFeat = QgsFeature()
+
+            # Get list of points to process
+            points = []
+            for feature in features:
+                points.append(feature.geometry().asPoint())
+                
+            # Prepare progress Bar
+            progressMessageBar = self.iface.messageBar()
+            progress = QProgressBar()
+            progress.setMaximum(100) 
+            progressMessageBar.pushWidget(progress)
+            def triangular(number):
+                return number + triangular(number-1) if number else 0
+            lines_total = triangular(len(points)-1)
+                    
+            # Iterate over points and create arcs using the geographiclib resources
+            k = 1
+            line_number = 0
+            for point1 in points:
+                for point2 in points[k:]:
+
+                    # Set progress
+                    line_number += 1
+                    percent = (line_number/float(lines_total)) * 100
+                    progress.setValue(percent)
+
+                    # Calculate waypoints for smooth geodesic
+                    arcpoints = []
+                    arcpoints2 = []
+                    l = geod.InverseLine(point1[1], point1[0], point2[1], point2[0], Geodesic.LATITUDE | Geodesic.LONGITUDE)
+                    da = 1
+                    n = int(math.ceil(l.a13 / da))
+                    if n == 0:
+                        continue
+                    da = l.a13 / n
+                    
+                    for i in range(n + 1):
+                        a = da * i
+                        g = l.ArcPosition(a, Geodesic.LATITUDE | Geodesic.LONGITUDE | Geodesic.LONG_UNROLL)
+
+                        # Make multipart feature if the line crosses longitude of 180 degree
+                        if g['lon2'] >= -180:
+                            arcpoints.append(QgsPoint(g['lon2'], g['lat2']))
+                        else:
+                            arcpoints2.append(QgsPoint(g['lon2']+360, g['lat2']))
+
+                    if not arcpoints2:
+                        polyline = QgsGeometry.fromPolyline(arcpoints)
+                    else:
+                        polyline = QgsGeometry.fromMultiPolyline([arcpoints, arcpoints2])
+
+                    outFeat.setGeometry(polyline)
+                    pr.addFeatures([outFeat])
+                k += 1
+            self.iface.messageBar().clearWidgets()
+                            
+            # Handle output
+            if self.dlg.ui.memoryLayerOutput.isChecked():  # Load memory layer in canvas
+                QgsMapLayerRegistry.instance().addMapLayer(outputLayer)
+
+            elif self.dlg.ui.shapefileOutput.isChecked():  # Save shapefile
+                QgsVectorFileWriter.writeAsVectorFormat(outputLayer, shapefilename, "utf-8", None, "ESRI Shapefile")
+
+                if self.dlg.ui.addToCanvas.isChecked():  # Add saved shapefile to canvas
+                    layername = os.path.splitext(os.path.basename(str(shapefilename)))[0]
+                    savedLayer = QgsVectorLayer(shapefilename, layername, "ogr")
+                    QgsMapLayerRegistry.instance().addMapLayer(savedLayer)
+
+            # Show success message
+            self.showMessage(self.tr('Completed.'), QgsMessageBar.SUCCESS)
+	    self.dlg.close()

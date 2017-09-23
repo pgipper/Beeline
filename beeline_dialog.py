@@ -6,7 +6,6 @@
  Connect points along great circles
                              -------------------
         begin                : 2017-09-10
-        git sha              : $Format:%H$
         copyright            : (C) 2017 by Peter Gipper
         email                : peter.gipper@geosysnet.de
  ***************************************************************************/
@@ -45,7 +44,7 @@ class BeelineDialog(QtGui.QDialog):
         self.oldPath = ''
 
     def browse(self):
-        """Opens a browser window to set the location of the output file."""
+        """Opens a window to set the location of the output file."""
         fileName0 = QtGui.QFileDialog.getSaveFileName(self, 'Save as', self.oldPath, "Shapefile (*.shp);;All files (*)")
         fileName = os.path.splitext(str(fileName0))[0]+'.shp'
         if os.path.splitext(str(fileName0))[0] != '':
