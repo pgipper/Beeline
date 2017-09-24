@@ -28,7 +28,7 @@ import resources_rc
 # Import the code for the dialog
 from beeline_dialog import BeelineDialog
 # Import libs and the external geographiclib
-import time, math, sys, os.path; sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/libs")
+import timeit, math, sys, os.path; sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/libs")
 from geographiclib.geodesic import Geodesic
 
 # define the WGS84 ellipsoid using geographiclib
@@ -206,6 +206,7 @@ class Beeline:
         # See if OK was pressed
         if result:
             
+            tic=timeit.default_timer()
             # Check for a valid Input Layers in the project
             point_layers = []
             layers = QgsMapLayerRegistry.instance().mapLayers()
@@ -258,7 +259,10 @@ class Beeline:
             progress.setMaximum(100) 
             progressMessageBar.pushWidget(progress)
             def triangular(number):
-                return number + triangular(number-1) if number else 0
+                tn = 0
+                for i in xrange(1, number+1):
+                    tn += i
+                return tn
             lines_total = triangular(len(points)-1)
                     
             # Iterate over points and create arcs using the geographiclib resources
@@ -287,10 +291,12 @@ class Beeline:
                         g = l.ArcPosition(a, Geodesic.LATITUDE | Geodesic.LONGITUDE | Geodesic.LONG_UNROLL)
 
                         # Make multipart feature if the line crosses longitude of 180 degree
-                        if g['lon2'] >= -180:
+                        if g['lon2'] <= 180 and g['lon2'] >= -180:
                             arcpoints.append(QgsPoint(g['lon2'], g['lat2']))
+                        elif g['lon2'] <= -180:
+                            arcpoints2.append(QgsPoint(g['lon2']+360, g['lat2']))                        
                         else:
-                            arcpoints2.append(QgsPoint(g['lon2']+360, g['lat2']))
+                            arcpoints2.append(QgsPoint(g['lon2']-360, g['lat2']))
 
                     if not arcpoints2:
                         polyline = QgsGeometry.fromPolyline(arcpoints)
@@ -301,6 +307,8 @@ class Beeline:
                     pr.addFeatures([outFeat])
                 k += 1
             self.iface.messageBar().clearWidgets()
+            toc=timeit.default_timer()
+	    print "processing time: ", toc-tic
                             
             # Handle output
             if self.dlg.ui.memoryLayerOutput.isChecked():  # Load memory layer in canvas
@@ -317,3 +325,4 @@ class Beeline:
             # Show success message
             self.showMessage(self.tr('Completed.'), QgsMessageBar.SUCCESS)
 	    self.dlg.close()
+	    
