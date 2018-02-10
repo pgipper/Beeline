@@ -1,17 +1,38 @@
+# This file contains metadata for your plugin. Beginning
+# with version 1.8 this is the preferred way to supply information about a
+# plugin. The current method of embedding metadata in __init__.py will
+# be supported until version 2.0
+
+# This file should be included when you package your plugin.
+
+# Mandatory items:
+
+
 [general]
 name=Beeline
+qgisMinimumVersion=2.99
+qgisMaximumVersion=3.99
 description=Connect points along great circles
-about=Creates a line vector layer that connects all input points along the shortest path on a spheroid (beeline). The resulting lines represent arcs of great circles, created with the library geographiclib (https://geographiclib.sourceforge.io/).
-category=Vector
-version=0.1.0
-qgisMinimumVersion=2.8
-author=Peter Gipper
-email=peter.gipper@geosysnet.de
-icon=icon.svg
-tags=great circle, beeline, air line, flight, shortest path, geographiclib, geodesic
-homepage=
+about=Creates a line vector layer that connects all input points along the shortest path on a spheroid
+version=0.2.0
+
+# Optional items:
+
+# changelog=
+homepage=https://github.com/Ah4b/Beeline/
 tracker=https://github.com/Ah4b/Beeline/issues
 repository=https://github.com/Ah4b/Beeline/
+
+# tags are comma separated with spaces allowed
+tags=great circle, beeline, air line, flight, shortest path, geographiclib, geodesic
+
+icon=icon.svg
+
 experimental=False
+
+# deprecated flag (applies to the whole plugin, not just a single version
 deprecated=False
-version=version 0.1
+
+# Author contact information
+author=Peter Gipper
+email=peter.gipper@geosysnet.de

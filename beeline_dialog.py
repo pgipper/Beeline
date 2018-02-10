@@ -21,15 +21,14 @@
 """
 
 import os
+from qgis.PyQt.QtWidgets import QDialog
+from Beeline.beeline_dialog_base import Ui_BeelineDialogBase
 
-from PyQt4 import QtGui, uic
-from beeline_dialog_base import Ui_BeelineDialogBase
 
-
-class BeelineDialog(QtGui.QDialog):
+class BeelineDialog(QDialog):
     def __init__(self):
         """Constructor."""
-        QtGui.QDialog.__init__(self)
+        super().__init__()
         # Set up the user interface from Designer.
         # After setupUI you can access any designer object by doing
         # self.<objectname>, and you can use autoconnect slots - see

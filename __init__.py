@@ -22,8 +22,7 @@
 """
 
 
-# noinspection PyPep8Naming
-def classFactory(iface):  # pylint: disable=invalid-name
+def classFactory(iface):
     """Load Beeline class from file Beeline.
 
     :param iface: A QGIS interface instance.

@@ -19,14 +19,15 @@
  *                                                                         *
  ***************************************************************************/
 """
-from PyQt4.QtCore import QSettings, QTranslator, qVersion, QCoreApplication
-from PyQt4.QtGui import QAction, QIcon, QFileDialog, QProgressBar
+from qgis.PyQt.QtCore import *
+from qgis.PyQt.QtGui import *
+from qgis.PyQt.QtWidgets import *
 from qgis.gui import QgsMessageBar
-from qgis.core import QgsGeometry, QgsFeatureRequest, QgsSpatialIndex, QgsVectorLayer, QgsFeature, QgsPoint, QgsMapLayerRegistry, QgsVectorFileWriter, QgsProject
+from qgis.core import *
 # Initialize Qt resources from file resources.py
-import resources_rc
+from Beeline import resources_rc
 # Import the code for the dialog
-from beeline_dialog import BeelineDialog
+from Beeline.beeline_dialog import BeelineDialog
 # Import libs and the external geographiclib
 import timeit, math, sys, os.path; sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/libs")
 from geographiclib.geodesic import Geodesic
@@ -189,14 +190,17 @@ class Beeline:
 
     def populate(self):
         """Populate the dropdown menu with point vector layers"""
+
         self.dlg.ui.cmbInputLayer.clear()
         for legend in QgsProject.instance().layerTreeRoot().findLayers():
-            layer = QgsMapLayerRegistry.instance().mapLayer(legend.layerId())
-            if layer.geometryType() == 0:
+            layer = QgsProject.instance().mapLayer(legend.layerId())
+
+            if type(layer) == QgsVectorLayer and layer.geometryType() == 0:
                 self.dlg.ui.cmbInputLayer.addItem(layer.name())
             
     def run(self):
         """Run method that performs all the real work"""
+
         # Populate the Dropdown Menu (ComboBox)
         self.populate()
 
@@ -207,20 +211,22 @@ class Beeline:
         if result:
             
             tic=timeit.default_timer()
+
             # Check for a valid Input Layers in the project
             point_layers = []
-            layers = QgsMapLayerRegistry.instance().mapLayers()
-            for name, layer in layers.iteritems():
+            layers = QgsProject.instance().mapLayers()
+
+            for key in layers:
                 # Check the layer geometry type (0 for points, 1 for lines, and 2 for polygons)
-                if layer.geometryType() == 0:
-                    point_layers.append(layer)
+                if type(layers[key])== QgsVectorLayer and layers[key].geometryType() == 0:
+                    point_layers.append(layers[key])
             if len(point_layers) == 0:
                 self.showMessage(self.tr('No layers to process. Please add a point layer to your project.'), QgsMessageBar.WARNING)
                 return
             
             # Get input layer by name (index may change)
             layer_name = self.dlg.ui.cmbInputLayer.currentText()
-            inputLayer = QgsMapLayerRegistry.instance().mapLayersByName(layer_name)[0]
+            inputLayer = QgsProject.instance().mapLayersByName(layer_name)[0]
 
             # Check if CRS is WGS84 (EPSG:4326)
             if inputLayer.crs().authid() != u'EPSG:4326':
@@ -260,7 +266,7 @@ class Beeline:
             progressMessageBar.pushWidget(progress)
             def triangular(number):
                 tn = 0
-                for i in xrange(1, number+1):
+                for i in range(1, number+1):
                     tn += i
                 return tn
             lines_total = triangular(len(points)-1)
@@ -308,11 +314,11 @@ class Beeline:
                 k += 1
             self.iface.messageBar().clearWidgets()
             toc=timeit.default_timer()
-	    print "processing time: ", toc-tic
+            print("processing time: ", toc-tic)
                             
             # Handle output
             if self.dlg.ui.memoryLayerOutput.isChecked():  # Load memory layer in canvas
-                QgsMapLayerRegistry.instance().addMapLayer(outputLayer)
+                QgsProject.instance().addMapLayer(outputLayer)
 
             elif self.dlg.ui.shapefileOutput.isChecked():  # Save shapefile
                 QgsVectorFileWriter.writeAsVectorFormat(outputLayer, shapefilename, "utf-8", None, "ESRI Shapefile")
@@ -320,9 +326,8 @@ class Beeline:
                 if self.dlg.ui.addToCanvas.isChecked():  # Add saved shapefile to canvas
                     layername = os.path.splitext(os.path.basename(str(shapefilename)))[0]
                     savedLayer = QgsVectorLayer(shapefilename, layername, "ogr")
-                    QgsMapLayerRegistry.instance().addMapLayer(savedLayer)
+                    QgsProject.instance().addMapLayer(savedLayer)
 
             # Show success message
             self.showMessage(self.tr('Completed.'), QgsMessageBar.SUCCESS)
-	    self.dlg.close()
-	    
+            self.dlg.close()
