@@ -184,7 +184,7 @@ class Beeline:
         # remove the toolbar
         del self.toolbar
 
-    def showMessage(self, message, level=QgsMessageBar.INFO):
+    def showMessage(self, message, level=Qgis.Info):
         """Pushes a message to the Message Bar"""
         self.iface.messageBar().pushMessage(message, level, self.iface.messageTimeout())
 
@@ -221,7 +221,7 @@ class Beeline:
                 if type(layers[key])== QgsVectorLayer and layers[key].geometryType() == 0:
                     point_layers.append(layers[key])
             if len(point_layers) == 0:
-                self.showMessage(self.tr('No layers to process. Please add a point layer to your project.'), QgsMessageBar.WARNING)
+                self.showMessage(self.tr('No layers to process. Please add a point layer to your project.'), Qgis.Warning)
                 return
             
             # Get input layer by name (index may change)
@@ -230,12 +230,12 @@ class Beeline:
 
             # Check if CRS is WGS84 (EPSG:4326)
             if inputLayer.crs().authid() != u'EPSG:4326':
-                self.showMessage(self.tr('Input point layer must be in geographic coordinates (WGS 84, EPSG 4326).'), QgsMessageBar.WARNING)
+                self.showMessage(self.tr('Input point layer must be in geographic coordinates (WGS 84, EPSG 4326).'), Qgis.Warning)
                 return
 
             # Check if output location is set
             elif (self.dlg.ui.shapefileOutput.isChecked() and self.dlg.ui.outputFilename.text() == ''):
-                self.showMessage(self.tr('Error, no valid shapefile name for output'),QgsMessageBar.WARNING)
+                self.showMessage(self.tr('Error, no valid shapefile name for output'), Qgis.Warning)
                 return
 
             # Get output filename
@@ -329,5 +329,5 @@ class Beeline:
                     QgsProject.instance().addMapLayer(savedLayer)
 
             # Show success message
-            self.showMessage(self.tr('Completed.'), QgsMessageBar.SUCCESS)
+            self.showMessage(self.tr('Completed.'), Qgis.Success)
             self.dlg.close()
