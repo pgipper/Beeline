@@ -298,14 +298,14 @@ class Beeline:
 
                         # Make multipart feature if the line crosses longitude of 180 degree
                         if g['lon2'] <= 180 and g['lon2'] >= -180:
-                            arcpoints.append(QgsPoint(g['lon2'], g['lat2']))
+                            arcpoints.append(QgsPointXY(g['lon2'], g['lat2']))
                         elif g['lon2'] <= -180:
-                            arcpoints2.append(QgsPoint(g['lon2']+360, g['lat2']))                        
+                            arcpoints2.append(QgsPointXY(g['lon2']+360, g['lat2']))                        
                         else:
-                            arcpoints2.append(QgsPoint(g['lon2']-360, g['lat2']))
+                            arcpoints2.append(QgsPointXY(g['lon2']-360, g['lat2']))
 
                     if not arcpoints2:
-                        polyline = QgsGeometry.fromPolyline(arcpoints)
+                        polyline = QgsGeometry.fromPolylineXY(arcpoints)
                     else:
                         polyline = QgsGeometry.fromMultiPolylineXY([arcpoints, arcpoints2])
 
