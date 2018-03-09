@@ -307,7 +307,7 @@ class Beeline:
                     if not arcpoints2:
                         polyline = QgsGeometry.fromPolyline(arcpoints)
                     else:
-                        polyline = QgsGeometry.fromMultiPolyline([arcpoints, arcpoints2])
+                        polyline = QgsGeometry.fromMultiPolylineXY([arcpoints, arcpoints2])
 
                     outFeat.setGeometry(polyline)
                     pr.addFeatures([outFeat])
