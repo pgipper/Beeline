@@ -279,7 +279,7 @@ class Beeline:
 
                     # Set progress
                     line_number += 1
-                    percent = (line_number/float(lines_total)) * 100
+                    percent = int((line_number/float(lines_total)) * 100)
                     progress.setValue(percent)
 
                     # Calculate waypoints for smooth geodesic
