@@ -35,4 +35,4 @@ deprecated=False
 
 # Author contact information
 author=Peter Gipper
-email=peter.gipper@geosysnet.de
+email=petergipper@gmail.com
