@@ -62,12 +62,12 @@ class Beeline:
     def populate(self):
         """Populate the dropdown menu with point vector layers"""
 
-        self.dlg.ui.cmbInputLayer.clear()
+        self.dlg.cmbInputLayer.clear()
         for legend in QgsProject.instance().layerTreeRoot().findLayers():
             layer = QgsProject.instance().mapLayer(legend.layerId())
 
             if type(layer) == QgsVectorLayer and layer.geometryType() == 0:
-                self.dlg.ui.cmbInputLayer.addItem(layer.name())
+                self.dlg.cmbInputLayer.addItem(layer.name())
 
     def run(self):
         """Run method that performs all the real work"""
@@ -94,7 +94,7 @@ class Beeline:
                 return
 
             # Get input layer by name (index may change)
-            layer_name = self.dlg.ui.cmbInputLayer.currentText()
+            layer_name = self.dlg.cmbInputLayer.currentText()
             inputLayer = QgsProject.instance().mapLayersByName(layer_name)[0]
 
             # Check if CRS is WGS84 (EPSG:4326)
@@ -103,13 +103,13 @@ class Beeline:
                 return
 
             # Check if output location is set
-            elif (self.dlg.ui.shapefileOutput.isChecked() and self.dlg.ui.outputFilename.text() == ''):
+            elif (self.dlg.shapefileOutput.isChecked() and self.dlg.outputFilename.text() == ''):
                 self.showMessage('Error, no valid shapefile name for output', Qgis.Warning)
                 return
 
             # Get output filename
-            if self.dlg.ui.shapefileOutput.isChecked():
-                shapefilename = self.dlg.ui.outputFilename.text()
+            if self.dlg.shapefileOutput.isChecked():
+                shapefilename = self.dlg.outputFilename.text()
 
             # Restrict processing to selected features
             if inputLayer.selectedFeatures():
@@ -159,13 +159,13 @@ class Beeline:
             self.iface.messageBar().clearWidgets()
 
             # Handle output
-            if self.dlg.ui.memoryLayerOutput.isChecked():  # Load memory layer in canvas
+            if self.dlg.memoryLayerOutput.isChecked():  # Load memory layer in canvas
                 QgsProject.instance().addMapLayer(outputLayer)
 
-            elif self.dlg.ui.shapefileOutput.isChecked():  # Save shapefile
+            elif self.dlg.shapefileOutput.isChecked():  # Save shapefile
                 QgsVectorFileWriter.writeAsVectorFormat(outputLayer, shapefilename, "utf-8", None, "ESRI Shapefile")
 
-                if self.dlg.ui.addToCanvas.isChecked():  # Add saved shapefile to canvas
+                if self.dlg.addToCanvas.isChecked():  # Add saved shapefile to canvas
                     layername = os.path.splitext(os.path.basename(str(shapefilename)))[0]
                     savedLayer = QgsVectorLayer(shapefilename, layername, "ogr")
                     QgsProject.instance().addMapLayer(savedLayer)
