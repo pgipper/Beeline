@@ -7,7 +7,7 @@
                               -------------------
         begin                : 2017-09-10
         copyright            : (C) 2017 by Peter Gipper
-        email                : peter.gipper@geosysnet.de
+        email                : peter.gipper@wheregroup.com
  ***************************************************************************/
 
 /***************************************************************************
@@ -29,11 +29,7 @@ from Beeline import resources_rc
 # Import the code for the dialog
 from Beeline.beeline_dialog import BeelineDialog
 # Import libs and the external geographiclib
-import timeit, math, sys, os.path; sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/libs")
-from geographiclib.geodesic import Geodesic
-
-# define the WGS84 ellipsoid using geographiclib
-geod = Geodesic.WGS84
+import timeit, math, os.path
 
 
 class Beeline:
@@ -197,7 +193,7 @@ class Beeline:
 
             if type(layer) == QgsVectorLayer and layer.geometryType() == 0:
                 self.dlg.ui.cmbInputLayer.addItem(layer.name())
-            
+
     def run(self):
         """Run method that performs all the real work"""
 
@@ -206,10 +202,10 @@ class Beeline:
 
         # Run the dialog event loop
         result = self.dlg.exec_()
-    
+
         # See if OK was pressed
         if result:
-            
+
             tic=timeit.default_timer()
 
             # Check for a valid Input Layers in the project
@@ -223,7 +219,7 @@ class Beeline:
             if len(point_layers) == 0:
                 self.showMessage(self.tr('No layers to process. Please add a point layer to your project.'), Qgis.Warning)
                 return
-            
+
             # Get input layer by name (index may change)
             layer_name = self.dlg.ui.cmbInputLayer.currentText()
             inputLayer = QgsProject.instance().mapLayersByName(layer_name)[0]
@@ -258,11 +254,11 @@ class Beeline:
             points = []
             for feature in features:
                 points.append(feature.geometry().asPoint())
-                
+
             # Prepare progress Bar
             progressMessageBar = self.iface.messageBar()
             progress = QProgressBar()
-            progress.setMaximum(100) 
+            progress.setMaximum(100)
             progressMessageBar.pushWidget(progress)
             def triangular(number):
                 tn = 0
@@ -270,8 +266,8 @@ class Beeline:
                     tn += i
                 return tn
             lines_total = triangular(len(points)-1)
-                    
-            # Iterate over points and create arcs using the geographiclib resources
+
+            # Iterate over points and create arcs
             k = 1
             line_number = 0
             for point1 in points:
@@ -282,40 +278,15 @@ class Beeline:
                     percent = int((line_number/float(lines_total)) * 100)
                     progress.setValue(percent)
 
-                    # Calculate waypoints for smooth geodesic
-                    arcpoints = []
-                    arcpoints2 = []
-                    l = geod.InverseLine(point1[1], point1[0], point2[1], point2[0], Geodesic.LATITUDE | Geodesic.LONGITUDE)
-                    da = 1
-                    n = int(math.ceil(l.a13 / da))
-                    if n == 0:
-                        continue
-                    da = l.a13 / n
-                    
-                    for i in range(n + 1):
-                        a = da * i
-                        g = l.ArcPosition(a, Geodesic.LATITUDE | Geodesic.LONGITUDE | Geodesic.LONG_UNROLL)
-
-                        # Make multipart feature if the line crosses longitude of 180 degree
-                        if g['lon2'] <= 180 and g['lon2'] >= -180:
-                            arcpoints.append(QgsPointXY(g['lon2'], g['lat2']))
-                        elif g['lon2'] <= -180:
-                            arcpoints2.append(QgsPointXY(g['lon2']+360, g['lat2']))                        
-                        else:
-                            arcpoints2.append(QgsPointXY(g['lon2']-360, g['lat2']))
-
-                    if not arcpoints2:
-                        polyline = QgsGeometry.fromPolylineXY(arcpoints)
-                    else:
-                        polyline = QgsGeometry.fromMultiPolylineXY([arcpoints, arcpoints2])
-
-                    outFeat.setGeometry(polyline)
+                    # Create beeline and add as new feature
+                    beelineGeometry = self.createGeodesicLine(point1, point2)
+                    outFeat.setGeometry(beelineGeometry)
                     pr.addFeatures([outFeat])
                 k += 1
             self.iface.messageBar().clearWidgets()
             toc=timeit.default_timer()
             print("processing time: ", toc-tic)
-                            
+
             # Handle output
             if self.dlg.ui.memoryLayerOutput.isChecked():  # Load memory layer in canvas
                 QgsProject.instance().addMapLayer(outputLayer)
@@ -331,3 +302,12 @@ class Beeline:
             # Show success message
             self.showMessage(self.tr('Completed.'), Qgis.Success)
             self.dlg.close()
+
+    def createGeodesicLine(self, point1: QgsPointXY, point2: QgsPointXY, segmentSize: float = 100000.0) -> QgsGeometry:
+        if point1.isEmpty() or point2.isEmpty():
+            return QgsGeometry.fromWkt("LineString EMPTY")
+        distArea = QgsDistanceArea()
+        distArea.setEllipsoid('WGS84')
+        interval = min(100000.0, segmentSize)  # Max segment size of 100km
+        polyline = distArea.geodesicLine(point1, point2, interval=interval, breakLine=True)
+        return QgsGeometry.fromMultiPolylineXY(polyline)

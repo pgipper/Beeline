@@ -5,17 +5,13 @@ Example:
 
 ![Beelines Example](beelines.png)
 
-Project home and bug tracker: https://github.com/Ah4b/Beeline
+Project home and bug tracker: https://github.com/pgipper/Beeline
 
 Important notes on input data:
 
 * accepts only WGS 84
 * ignores invalid geometries
 * works well for up to a few hundred input points (save your project and edits!)
-
-Third-Party Components
--------------
-GeographicLib by Charles Karney: https://geographiclib.sourceforge.io/
 
 License
 -------------
