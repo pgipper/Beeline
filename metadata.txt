@@ -24,7 +24,7 @@ tracker=https://github.com/Ah4b/Beeline/issues
 repository=https://github.com/Ah4b/Beeline/
 
 # tags are comma separated with spaces allowed
-tags=great circle, beeline, air line, flight, shortest path, geographiclib, geodesic
+tags=great circle, beeline, air line, flight, shortest path, geodesic
 
 icon=icon.svg
 
