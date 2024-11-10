@@ -28,6 +28,7 @@ tags=great circle, beeline, air line, flight, shortest path, geodesic
 
 icon=icon.svg
 
+hasProcessingProvider=yes
 experimental=False
 
 # deprecated flag (applies to the whole plugin, not just a single version
