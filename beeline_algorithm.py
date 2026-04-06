@@ -89,7 +89,7 @@ class BeelineAlgorithm(QgsProcessingAlgorithm):
             self.OUTPUT,
             context,
             sinkFields,
-            Qgis.WkbType.LineString,
+            Qgis.WkbType.MultiLineString,
             source.sourceCrs()
         )
 
@@ -144,9 +144,9 @@ class BeelineAlgorithm(QgsProcessingAlgorithm):
                            ) -> Tuple[QgsGeometry, float]:
         if point1.isEmpty() or point2.isEmpty():
             return QgsGeometry.fromWkt("LineString EMPTY"), 0.0
-        interval = min(100000.0, segmentSize)  # Max segment size of 100km
-        polyline = distArea.geodesicLine(point1, point2, interval=interval, breakLine=True)
-        distance = sum(distArea.measureLine(line) for line in polyline)
+        distance = distArea.measureLine(point1, point2)
+        interval = min(segmentSize, distance) if distance > 0 else segmentSize
+        polyline = distArea.geodesicLine(point1, point2, interval=interval, breakLine=breakLine)
         return QgsGeometry.fromMultiPolylineXY(polyline), distance
 
     def name(self):
