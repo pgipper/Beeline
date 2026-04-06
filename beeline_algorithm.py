@@ -24,10 +24,21 @@ from typing import Tuple
 
 from qgis.PyQt.QtCore import QVariant
 from qgis.PyQt.QtGui import QIcon
-from qgis._core import QgsFeatureRequest
-from qgis.core import (Qgis, QgsFeature, QgsPointXY, QgsGeometry, QgsDistanceArea, QgsProcessingParameterFeatureSource,
-                       QgsProcessingException, QgsFeatureSink, QgsFields, QgsField, QgsProcessing,
-                       QgsProcessingAlgorithm, QgsProcessingProvider, QgsProcessingParameterFeatureSink, QgsProject)
+
+from qgis.core import (Qgis, QgsFeature, QgsFeatureRequest, QgsPointXY, QgsGeometry, QgsDistanceArea, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource,
+                       QgsProcessingException, QgsFeatureSink, QgsFields, QgsField, QgsProcessing, QgsProcessingParameterDefinition,
+                       QgsProcessingAlgorithm, QgsProcessingProvider, QgsProcessingParameterFeatureSink, QgsProcessingParameterBoolean, QgsProject)
+
+# Support both QGIS 3.x (unscoped enums) and 4.x (scoped enums under Qgis.*)
+try:
+    _SOURCE_TYPE_VECTOR_POINT = Qgis.ProcessingSourceType.VectorPoint
+except AttributeError:
+    _SOURCE_TYPE_VECTOR_POINT = QgsProcessing.TypeVectorPoint
+
+try:
+    _FLAG_ADVANCED = Qgis.ProcessingParameterFlag.Advanced
+except AttributeError:
+    _FLAG_ADVANCED = QgsProcessingParameterDefinition.FlagAdvanced
 
 
 class BeelineProvider(QgsProcessingProvider):
@@ -52,6 +63,8 @@ class BeelineProvider(QgsProcessingProvider):
 
 class BeelineAlgorithm(QgsProcessingAlgorithm):
     INPUT = "INPUT"
+    SEGMENT_SIZE = "SEGMENT_SIZE"
+    ANTIMERIDIAN_SPLIT = "ANTIMERIDIAN_SPLIT"
     OUTPUT = "OUTPUT"
 
     def initAlgorithm(self, config=None):
@@ -59,9 +72,28 @@ class BeelineAlgorithm(QgsProcessingAlgorithm):
             QgsProcessingParameterFeatureSource(
                 self.INPUT,
                 "Input Points",
-                types=[QgsProcessing.SourceType.VectorPoint],
+                types=[_SOURCE_TYPE_VECTOR_POINT],
             )
         )
+
+        paramSegmentSize = QgsProcessingParameterDistance(
+            self.SEGMENT_SIZE,
+            'Segment size',
+            parentParameterName=self.INPUT,
+            minValue=0,
+            maxValue=1.79769e+308,
+            defaultValue=100000
+        )
+        paramSegmentSize.setFlags(paramSegmentSize.flags() | _FLAG_ADVANCED)
+        self.addParameter(paramSegmentSize)
+
+        paramAntimeridian = QgsProcessingParameterBoolean(
+            self.ANTIMERIDIAN_SPLIT,
+            'Split lines at antimeridian (±180°)',
+            defaultValue=True
+        )
+        paramAntimeridian.setFlags(paramAntimeridian.flags() | _FLAG_ADVANCED)
+        self.addParameter(paramAntimeridian)
 
         self.addParameter(
             QgsProcessingParameterFeatureSink(
@@ -78,6 +110,18 @@ class BeelineAlgorithm(QgsProcessingAlgorithm):
         )
         if source is None:
             raise QgsProcessingException(self.invalidSourceError(parameters, self.INPUT))
+
+        segmentSize = self.parameterAsDouble(
+            parameters,
+            self.SEGMENT_SIZE,
+            context
+        )
+
+        antimeridianSplit = self.parameterAsBoolean(
+            parameters,
+            self.ANTIMERIDIAN_SPLIT,
+            context
+        )
 
         sinkFields = QgsFields()
         sinkFields.append(QgsField('source_id', QVariant.Int))
@@ -122,12 +166,13 @@ class BeelineAlgorithm(QgsProcessingAlgorithm):
                 percent = int((currenFeature/float(sinkFeatureCount)) * 100)
                 feedback.setProgress(percent)
 
+                # Create new feature
                 outFeat = QgsFeature(sinkFields)
                 outFeat['source_id'] = point1_id
                 outFeat['target_id'] = point2_id
 
                 # Create beeline and add as new feature
-                beelineGeometry, distance = self.createGeodesicLine(distanceArea, point1, point2)
+                beelineGeometry, distance = self.createGeodesicLine(distanceArea, point1, point2, segmentSize, antimeridianSplit)
                 outFeat.setGeometry(beelineGeometry)
                 outFeat['distance'] = distance
                 sink.addFeature(outFeat, QgsFeatureSink.Flag.FastInsert)
@@ -140,8 +185,8 @@ class BeelineAlgorithm(QgsProcessingAlgorithm):
         feedback.pushInfo(infoText)
         return {self.OUTPUT: dest_id}
 
-    def createGeodesicLine(self, distArea, point1: QgsPointXY, point2: QgsPointXY, segmentSize: float = 100000.0
-                           ) -> Tuple[QgsGeometry, float]:
+    def createGeodesicLine(self, distArea, point1: QgsPointXY, point2: QgsPointXY, segmentSize,
+                           breakLine: bool = True) -> Tuple[QgsGeometry, float]:
         if point1.isEmpty() or point2.isEmpty():
             return QgsGeometry.fromWkt("LineString EMPTY"), 0.0
         distance = distArea.measureLine(point1, point2)
