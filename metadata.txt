@@ -1,6 +1,6 @@
 [general]
 name=Beeline
-qgisMinimumVersion=2.99
+qgisMinimumVersion=3.30
 qgisMaximumVersion=4.99
 description=Connect points along great circles
 about=Creates a line vector layer that connects all input points along the shortest path on a spheroid
