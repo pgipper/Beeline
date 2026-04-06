@@ -1,27 +1,17 @@
-# This file contains metadata for your plugin. Beginning
-# with version 1.8 this is the preferred way to supply information about a
-# plugin. The current method of embedding metadata in __init__.py will
-# be supported until version 2.0
-
-# This file should be included when you package your plugin.
-
-# Mandatory items:
-
-
 [general]
 name=Beeline
 qgisMinimumVersion=2.99
 qgisMaximumVersion=4.99
 description=Connect points along great circles
 about=Creates a line vector layer that connects all input points along the shortest path on a spheroid
-version=0.2.0
+version=1.0.0
 
-# Optional items:
-
-# changelog=
-homepage=https://github.com/Ah4b/Beeline/
-tracker=https://github.com/Ah4b/Beeline/issues
-repository=https://github.com/Ah4b/Beeline/
+changelog=
+  Version 1.0.0
+    * Moved to processing
+homepage=https://github.com/pgipper/Beeline/
+tracker=https://github.com/pgipper/Beeline/issues
+repository=https://github.com/pgipper/Beeline/
 
 # tags are comma separated with spaces allowed
 tags=great circle, beeline, air line, flight, shortest path, geodesic
@@ -31,7 +21,7 @@ icon=icon.svg
 hasProcessingProvider=yes
 experimental=False
 
-# deprecated flag (applies to the whole plugin, not just a single version
+# deprecated flag (applies to the whole plugin, not just a single version)
 deprecated=False
 
 # Author contact information
