@@ -1,0 +1,12 @@
+[project]
+name = "beeline"
+requires-python = ">=3.9"
+
+[project.optional-dependencies]
+dev = [
+    "pytest",
+    "pytest-qgis",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
