@@ -1,16 +1,14 @@
 Beeline
 ================
-A simple QGIS processing plugin that creates lines along great circles to connect a set of input points. 
+A simple QGIS processing plugin that creates lines along great circles to connect a set of input points.
+
+Works well for up to a few hundred input points (save your project and edits if you test limits!)
+
 Examples:
 
 ![Beelines Example](beelines.png)
 
 ![Beelines Example](beelines_globe.png)
-
-Project home and bug tracker: https://github.com/pgipper/Beeline
-
-Important notes on input data:
-* works well for up to a few hundred input points (save your project and edits!)
 
 License
 -------------
